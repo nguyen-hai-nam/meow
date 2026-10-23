@@ -2,6 +2,14 @@
 
 A tiny private space for two people to share photos and voice notes.
 
+Built on Next.js 16 (App Router) and React 19.
+
+## Requirements
+
+- Node.js 20.9+ for local development (the Docker image ships Node 24).
+- A browser that supports the Next.js 16 baseline: Chrome/Edge 111+,
+  Firefox 111+, Safari 16.4+.
+
 ## Access model
 
 - Two fixed accounts: `user1` and `user2`.
@@ -24,6 +32,7 @@ Edit `.env`:
 | `SESSION_SECRET` | At least 32 chars. Generate with `openssl rand -hex 32`. Changing it logs everyone out. |
 | `MEOW_USER1_NAME` / `MEOW_USER2_NAME` | Display names. |
 | `MEOW_USER1_PASSCODE` / `MEOW_USER2_PASSCODE` | Minimum 6 chars. |
+| `MEOW_DATA_DIR` | Optional. Where media and `moments.json` are stored. Compose sets it to `/app/data`. |
 
 Then:
 

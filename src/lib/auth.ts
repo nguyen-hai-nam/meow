@@ -11,7 +11,8 @@ async function resolveUser(token: string | undefined): Promise<PublicUser | null
 
 /** For server components and route handlers that can use next/headers. */
 export async function getSessionUser(): Promise<PublicUser | null> {
-  return resolveUser(cookies().get(SESSION_COOKIE)?.value);
+  const cookieStore = await cookies();
+  return resolveUser(cookieStore.get(SESSION_COOKIE)?.value);
 }
 
 /** For route handlers, reading the cookie straight off the request. */

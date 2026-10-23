@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { getUserFromRequest, unauthorized } from '@/lib/auth';
+import { getUploadsDir } from '@/lib/storage';
 
 // Every upload is named `<uuid>.<ext>` by the POST handler, so only accept that.
 const SAFE_FILENAME =
@@ -52,18 +53,18 @@ function parseRange(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { filename: string } }
+  { params }: { params: Promise<{ filename: string }> }
 ) {
   const user = await getUserFromRequest(request);
   if (!user) return unauthorized();
 
   try {
-    const { filename } = params;
+    const { filename } = await params;
     if (!SAFE_FILENAME.test(filename)) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    const uploadsDir = path.resolve(path.join(process.cwd(), 'data', 'uploads'));
+    const uploadsDir = path.resolve(getUploadsDir());
     const resolved = path.resolve(uploadsDir, filename);
 
     // Defence in depth: reject anything that escapes the uploads directory.

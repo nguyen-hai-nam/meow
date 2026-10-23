@@ -10,6 +10,7 @@ services:
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: 0.0.0.0
+      MEOW_DATA_DIR: /app/data
     ports:
       - "3000:3000"
     volumes:

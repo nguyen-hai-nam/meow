@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMoments, addMoment, deleteMoment } from '@/lib/storage';
+import { getMoments, addMoment, deleteMoment, getUploadsDir } from '@/lib/storage';
 import { getUserFromRequest, unauthorized } from '@/lib/auth';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     let storedMimeType: string | undefined;
 
     if (type === 'photo') {
-      fileName = `${uuidv4()}.jpg`;
+      fileName = `${randomUUID()}.jpg`;
     } else {
       const format = resolveAudioFormat(file, requestedMime);
       if (!format) {
@@ -93,18 +93,18 @@ export async function POST(request: NextRequest) {
           { status: 415 }
         );
       }
-      fileName = `${uuidv4()}${format.extension}`;
+      fileName = `${randomUUID()}${format.extension}`;
       storedMimeType = format.mimeType;
     }
 
-    const uploadsDir = path.join(process.cwd(), 'data', 'uploads');
+    const uploadsDir = getUploadsDir();
     await fs.mkdir(uploadsDir, { recursive: true });
 
     const buffer = Buffer.from(await file.arrayBuffer());
     await fs.writeFile(path.join(uploadsDir, fileName), buffer);
 
     const moment = {
-      id: uuidv4(),
+      id: randomUUID(),
       type,
       // Identity always comes from the verified session, never from the client.
       from: user.id,

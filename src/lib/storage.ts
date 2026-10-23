@@ -11,7 +11,9 @@ export interface Moment {
   createdAt: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.MEOW_DATA_DIR
+  ? path.resolve(process.env.MEOW_DATA_DIR)
+  : path.join(process.cwd(), 'data');
 const MOMENTS_FILE = path.join(DATA_DIR, 'moments.json');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 
