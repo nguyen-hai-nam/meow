@@ -7,6 +7,7 @@ export interface Moment {
   from: string;
   caption?: string;
   fileName: string;
+  mimeType?: string;
   createdAt: string;
 }
 
@@ -36,10 +37,14 @@ export async function addMoment(moment: Moment): Promise<void> {
   await fs.writeFile(MOMENTS_FILE, JSON.stringify(moments, null, 2), 'utf-8');
 }
 
-export async function deleteMoment(id: string): Promise<boolean> {
+export type DeleteResult = 'deleted' | 'not_found' | 'forbidden';
+
+export async function deleteMoment(id: string, ownerId: string): Promise<DeleteResult> {
   const moments = await getMoments();
   const moment = moments.find((m) => m.id === id);
-  if (!moment) return false;
+  if (!moment) return 'not_found';
+  // Ownership is enforced here, in the storage layer, so no caller can skip it.
+  if (moment.from !== ownerId) return 'forbidden';
 
   const filtered = moments.filter((m) => m.id !== id);
   await fs.writeFile(MOMENTS_FILE, JSON.stringify(filtered, null, 2), 'utf-8');
@@ -51,7 +56,7 @@ export async function deleteMoment(id: string): Promise<boolean> {
   } catch {
     // File may already be gone
   }
-  return true;
+  return 'deleted';
 }
 
 export function getUploadsDir(): string {

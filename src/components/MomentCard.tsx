@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { PublicUser } from '@/lib/users';
 
 interface Moment {
   id: string;
@@ -14,18 +15,22 @@ interface Moment {
 interface MomentCardProps {
   moment: Moment;
   currentUser: string;
+  users: PublicUser[];
   onDelete?: (id: string) => void;
 }
 
-const userMeta: Record<string, { name: string; emoji: string }> = {
-  user1: { name: 'Person 1', emoji: '🐱' },
-  user2: { name: 'Person 2', emoji: '🐾' },
-};
-
-export default function MomentCard({ moment, currentUser, onDelete }: MomentCardProps) {
+export default function MomentCard({
+  moment,
+  currentUser,
+  users,
+  onDelete,
+}: MomentCardProps) {
   const [showDelete, setShowDelete] = useState(false);
   const isOwn = moment.from === currentUser;
-  const sender = userMeta[moment.from] || { name: moment.from, emoji: '👤' };
+  const sender = users.find((user) => user.id === moment.from) ?? {
+    name: moment.from,
+    emoji: '👤',
+  };
 
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
