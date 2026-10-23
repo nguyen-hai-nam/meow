@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CameraCapture from '@/components/CameraCapture';
 import VoiceRecorder from '@/components/VoiceRecorder';
@@ -13,7 +13,10 @@ import type { Moment } from '@/lib/types';
 interface FeedScreenProps {
   user: PublicUser;
   users: PublicUser[];
+  initialMoments: Moment[];
 }
+
+const LEGACY_CLEARED_KEY = 'meow:cleared-moments';
 
 const AUDIO_EXTENSIONS: Record<string, string> = {
   'audio/webm': 'webm',
@@ -28,15 +31,23 @@ function audioExtension(mimeType: string): string {
   return AUDIO_EXTENSIONS[mimeType.split(';')[0].trim().toLowerCase()] ?? 'webm';
 }
 
-export default function FeedScreen({ user, users }: FeedScreenProps) {
+export default function FeedScreen({
+  user,
+  users,
+  initialMoments,
+}: FeedScreenProps) {
   const router = useRouter();
-  const [moments, setMoments] = useState<Moment[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [moments, setMoments] = useState<Moment[]>(initialMoments);
   const [showCamera, setShowCamera] = useState(false);
   const [showVoice, setShowVoice] = useState(false);
   const [sending, setSending] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Moments cleared/deleted here are hidden from background polls until the
+  // server agrees, which prevents a card from flickering back in.
+  const hiddenRef = useRef<Set<string>>(new Set());
+  const inFlightRef = useRef(false);
 
   const currentUser = user.id;
   const otherUser = users.find((candidate) => candidate.id !== currentUser);
@@ -46,29 +57,96 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
     router.refresh();
   }, [router]);
 
-  const fetchMoments = useCallback(async () => {
+  const fetchMoments = useCallback(async (): Promise<Moment[] | null> => {
+    if (inFlightRef.current) return null;
+    inFlightRef.current = true;
+
     try {
       const res = await fetch('/api/moments', { cache: 'no-store' });
       if (res.status === 401) {
         sessionExpired();
-        return;
+        return null;
       }
-      if (res.ok) {
-        const data = await res.json();
-        setMoments(data);
-      }
+      if (!res.ok) return null;
+
+      const data = (await res.json()) as Moment[];
+      if (!Array.isArray(data)) return null;
+
+      const visible = data.filter((moment) => !hiddenRef.current.has(moment.id));
+      startTransition(() => setMoments(visible));
+      return visible;
     } catch (err) {
       console.error('Failed to fetch moments:', err);
+      return null;
     } finally {
-      setLoaded(true);
+      inFlightRef.current = false;
     }
   }, [sessionExpired]);
 
+  // The previous build remembered cleared cards only on this device. Push
+  // those ids to the server once so previously seen moments do not return.
   useEffect(() => {
-    fetchMoments();
-    // Poll every 5 seconds for new moments
-    const interval = setInterval(fetchMoments, 5000);
-    return () => clearInterval(interval);
+    let ids: string[] = [];
+    try {
+      const raw = window.localStorage.getItem(LEGACY_CLEARED_KEY);
+      window.localStorage.removeItem(LEGACY_CLEARED_KEY);
+      const parsed: unknown = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) {
+        ids = parsed
+          .filter((id): id is string => typeof id === 'string')
+          .slice(-50);
+      }
+    } catch {
+      // Ignore unreadable legacy storage.
+    }
+    if (ids.length === 0) return;
+
+    const wanted = new Set(ids);
+    ids.forEach((id) => hiddenRef.current.add(id));
+    setMoments((prev) => prev.filter((moment) => !wanted.has(moment.id)));
+
+    void fetch('/api/moments/seen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    }).catch(() => {
+      // A failed migration just means those cards may return next time.
+    });
+  }, []);
+
+  useEffect(() => {
+    let interval: number | undefined;
+
+    const tick = () => {
+      if (document.visibilityState === 'visible') void fetchMoments();
+    };
+
+    const startPolling = () => {
+      if (interval !== undefined) window.clearInterval(interval);
+      interval = window.setInterval(tick, 5000);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        tick();
+        startPolling();
+      } else if (interval !== undefined) {
+        window.clearInterval(interval);
+        interval = undefined;
+      }
+    };
+
+    // Reconcile the server-rendered pile, then poll only while visible.
+    tick();
+    startPolling();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', tick);
+
+    return () => {
+      if (interval !== undefined) window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', tick);
+    };
   }, [fetchMoments]);
 
   const uploadMoment = async (blob: Blob, type: 'photo' | 'voice') => {
@@ -98,7 +176,14 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
         return;
       }
 
-      await fetchMoments();
+      const created = (await res.json()) as Moment;
+      if (created?.id) {
+        setMoments((prev) =>
+          prev.some((moment) => moment.id === created.id)
+            ? prev
+            : [...prev, created]
+        );
+      }
     } catch (err) {
       console.error('Upload failed:', err);
       setError('Could not send your moment. Please try again.');
@@ -109,8 +194,38 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
     }
   };
 
+  const markSeen = async (id: string) => {
+    // Seen means gone for both of us: drop it immediately, then persist.
+    hiddenRef.current.add(id);
+    setMoments((prev) => prev.filter((moment) => moment.id !== id));
+
+    try {
+      const res = await fetch('/api/moments/seen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+
+      if (res.status === 401) {
+        sessionExpired();
+        return;
+      }
+
+      if (!res.ok) throw new Error(`Failed to mark moment seen (${res.status})`);
+    } catch (err) {
+      console.error('Mark seen failed:', err);
+      hiddenRef.current.delete(id);
+      const restored = await fetchMoments();
+      if (restored?.some((moment) => moment.id === id)) {
+        setError('Could not clear that moment. Please try again.');
+      }
+    }
+  };
+
   const handleDelete = async (id: string) => {
-    setError(null);
+    hiddenRef.current.add(id);
+    setMoments((prev) => prev.filter((moment) => moment.id !== id));
+
     try {
       const res = await fetch('/api/moments', {
         method: 'DELETE',
@@ -123,16 +238,14 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
         return;
       }
 
-      if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        setError(data?.error ?? 'Could not delete that moment.');
-        return;
-      }
-
-      setMoments((prev) => prev.filter((m) => m.id !== id));
+      if (!res.ok) throw new Error(`Failed to delete moment (${res.status})`);
     } catch (err) {
       console.error('Delete failed:', err);
-      setError('Could not delete that moment.');
+      hiddenRef.current.delete(id);
+      const restored = await fetchMoments();
+      if (restored?.some((moment) => moment.id === id)) {
+        setError('Could not delete that moment.');
+      }
     }
   };
 
@@ -186,20 +299,29 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
         <div className="min-h-0 flex-1">
           <MomentStack
             moments={moments}
-            loaded={loaded}
             currentUser={currentUser}
             users={users}
+            onSeen={markSeen}
             onDelete={handleDelete}
           />
         </div>
       </main>
 
-      {/* Sending overlay */}
+      {/* Sending toast */}
       {sending && (
-        <div className="fixed inset-0 z-40 bg-black/30 flex items-center justify-center">
-          <div className="bg-white rounded-2xl p-8 text-center shadow-xl">
-            <span className="text-4xl block mb-3 animate-bounce">✨</span>
-            <p className="text-gray-600 font-medium">Sending moment...</p>
+        <div
+          role="status"
+          className="pointer-events-none fixed inset-x-0 z-40 flex justify-center
+            pt-[calc(env(safe-area-inset-top,0px)+4.75rem)]"
+        >
+          <div className="flex items-center gap-2 rounded-full bg-white/90 px-4 py-2
+            text-sm font-medium text-gray-600 shadow-lg backdrop-blur animate-slide-up">
+            <span
+              aria-hidden="true"
+              className="h-4 w-4 animate-spin rounded-full border-2
+                border-warm-pink border-t-transparent"
+            />
+            Sending moment…
           </div>
         </div>
       )}

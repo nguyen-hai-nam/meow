@@ -8,6 +8,8 @@ interface MomentCardProps {
   currentUser: string;
   users: PublicUser[];
   onDelete?: (id: string) => void;
+  /** Load the image immediately for the top (visible) card. */
+  eager?: boolean;
 }
 
 function timeAgo(dateStr: string) {
@@ -26,6 +28,7 @@ export default function MomentCard({
   currentUser,
   users,
   onDelete,
+  eager = false,
 }: MomentCardProps) {
   const isOwn = moment.from === currentUser;
   const sender = users.find((user) => user.id === moment.from) ?? {
@@ -120,6 +123,9 @@ export default function MomentCard({
         src={`/api/uploads/${moment.fileName}`}
         alt={`Moment from ${sender.name}`}
         draggable={false}
+        loading={eager ? 'eager' : 'lazy'}
+        fetchPriority={eager ? 'high' : 'auto'}
+        decoding="async"
         className="pointer-events-none absolute inset-0 h-full w-full object-cover"
       />
 

@@ -1,42 +1,34 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import InstallButton from '@/components/InstallButton';
-import type { PublicUser } from '@/lib/users';
 
-const GRADIENTS = [
-  'from-pink-400 to-rose-500',
-  'from-purple-400 to-indigo-500',
-];
+const LAST_USERNAME_KEY = 'meow:last-username';
 
-interface LoginScreenProps {
-  users: PublicUser[];
-}
-
-export default function LoginScreen({ users }: LoginScreenProps) {
+export default function LoginScreen() {
   const router = useRouter();
-  const [selected, setSelected] = useState<PublicUser | null>(null);
-  const [passcode, setPasscode] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const chooseUser = (user: PublicUser) => {
-    setSelected(user);
-    setPasscode('');
-    setError(null);
-  };
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(LAST_USERNAME_KEY);
+      if (saved) setUsername(saved);
+    } catch {
+      // Storage can be unavailable (private mode); just start empty.
+    }
+  }, []);
 
-  const goBack = () => {
-    if (submitting) return;
-    setSelected(null);
-    setPasscode('');
-    setError(null);
-  };
+  const canSubmit =
+    username.trim().length > 0 && password.length > 0 && !submitting;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!selected || submitting) return;
+    if (!canSubmit) return;
 
     setSubmitting(true);
     setError(null);
@@ -45,18 +37,26 @@ export default function LoginScreen({ users }: LoginScreenProps) {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: selected.id, passcode }),
+        body: JSON.stringify({ username: username.trim(), password }),
       });
 
       if (res.ok) {
+        try {
+          window.localStorage.setItem(LAST_USERNAME_KEY, username.trim());
+        } catch {
+          // Not important.
+        }
+        router.prefetch('/feed');
         router.replace('/feed');
         router.refresh();
         return;
       }
 
-      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       setError(data?.error ?? 'Could not sign in. Please try again.');
-      setPasscode('');
+      setPassword('');
       setSubmitting(false);
     } catch {
       setError('Network error. Please try again.');
@@ -65,100 +65,113 @@ export default function LoginScreen({ users }: LoginScreenProps) {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-6">
-      <div className="animate-fade-in text-center mb-12">
-        <h1 className="text-5xl font-bold gradient-text mb-3">Meow</h1>
+    <main className="flex min-h-dvh flex-col items-center justify-center p-6">
+      <div className="mb-10 animate-fade-in text-center">
+        <h1 className="mb-3 text-5xl font-bold gradient-text">Meow</h1>
         <p className="text-lg text-gray-500">Share moments together 💕</p>
       </div>
 
-      <div className="w-full max-w-sm space-y-4">
-        {!selected ? (
-          <>
-            <p className="text-center text-gray-400 text-sm mb-6">Who are you?</p>
-            {users.map((user, index) => (
-              <button
-                key={user.id}
-                onClick={() => chooseUser(user)}
-                className={`w-full p-6 rounded-2xl bg-linear-to-r ${
-                  GRADIENTS[index % GRADIENTS.length]
-                } text-white
-                  transform transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]
-                  shadow-lg hover:shadow-xl animate-slide-up`}
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <span className="text-4xl mb-2 block">{user.emoji}</span>
-                <span className="text-xl font-semibold">{user.name}</span>
-              </button>
-            ))}
-          </>
-        ) : (
-          <form
-            onSubmit={handleSubmit}
-            className="animate-slide-up rounded-2xl bg-white shadow-lg p-6 space-y-5"
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-sm animate-slide-up space-y-4 rounded-3xl
+          border border-pink-100/80 bg-white p-6 shadow-lg"
+      >
+        <div>
+          <label
+            htmlFor="username"
+            className="text-xs font-medium text-gray-500"
           >
-            <div className="text-center">
-              <span className="text-4xl block mb-2">{selected.emoji}</span>
-              <p className="text-lg font-semibold text-gray-700">{selected.name}</p>
-              <p className="text-sm text-gray-400 mt-1">Enter your passcode</p>
-            </div>
+            Username
+          </label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            value={username}
+            onChange={(event) => {
+              setUsername(event.target.value);
+              if (error) setError(null);
+            }}
+            autoFocus
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="next"
+            disabled={submitting}
+            placeholder="your username"
+            className="mt-1.5 w-full rounded-xl border border-gray-200 px-4 py-3
+              text-base text-gray-800 placeholder:text-gray-300
+              focus:outline-hidden focus:ring-2 focus:ring-warm-pink/50
+              disabled:opacity-60"
+          />
+        </div>
 
-            <div>
-              <label htmlFor="passcode" className="sr-only">
-                Passcode
-              </label>
-              <input
-                id="passcode"
-                name="passcode"
-                type="password"
-                value={passcode}
-                onChange={(event) => setPasscode(event.target.value)}
-                autoFocus
-                autoComplete="current-password"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                disabled={submitting}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-center text-lg
-                  tracking-widest focus:outline-hidden focus:ring-2 focus:ring-warm-pink/50
-                  disabled:opacity-60"
-                placeholder="••••••"
-              />
-            </div>
+        <div>
+          <label
+            htmlFor="password"
+            className="text-xs font-medium text-gray-500"
+          >
+            Password
+          </label>
+          <div className="relative mt-1.5">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                if (error) setError(null);
+              }}
+              autoComplete="current-password"
+              enterKeyHint="go"
+              disabled={submitting}
+              placeholder="••••••••"
+              className="w-full rounded-xl border border-gray-200 py-3 pl-4 pr-16
+                text-base text-gray-800 placeholder:text-gray-300
+                focus:outline-hidden focus:ring-2 focus:ring-warm-pink/50
+                disabled:opacity-60"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              disabled={submitting}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg
+                px-2 py-1 text-xs font-medium text-gray-400 transition-colors
+                hover:text-gray-600 disabled:opacity-50"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
+        </div>
 
-            {error && (
-              <p role="alert" className="text-center text-sm text-red-500">
-                {error}
-              </p>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={goBack}
-                disabled={submitting}
-                className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-500
-                  font-medium transition-colors hover:bg-gray-50 disabled:opacity-60"
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                disabled={submitting || passcode.length === 0}
-                className="flex-1 py-3 rounded-xl gradient-primary text-white font-semibold
-                  transition-all active:scale-[0.98] disabled:opacity-60"
-              >
-                {submitting ? 'Unlocking…' : 'Unlock'}
-              </button>
-            </div>
-          </form>
+        {error && (
+          <p
+            role="alert"
+            aria-live="polite"
+            className="text-center text-sm text-red-500"
+          >
+            {error}
+          </p>
         )}
-      </div>
 
-      <p className="mt-12 text-xs text-gray-300">
-        {selected ? 'Only the two of you can get in' : 'Tap to enter your space'}
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="w-full rounded-xl gradient-primary py-3 font-semibold text-white
+            shadow-md transition-transform active:scale-[0.98] disabled:opacity-60"
+        >
+          {submitting ? 'Signing in…' : 'Sign in'}
+        </button>
+      </form>
+
+      <p className="mt-8 text-xs text-gray-300">
+        Only the two of you can get in
       </p>
 
-      <div className="mt-4">
+      <div className="mt-3">
         <InstallButton variant="text" />
       </div>
     </main>

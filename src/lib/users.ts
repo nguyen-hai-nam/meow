@@ -19,6 +19,11 @@ const NAME_ENV: Record<string, string> = {
   user2: 'MEOW_USER2_NAME',
 };
 
+const USERNAME_ENV: Record<string, string> = {
+  user1: 'MEOW_USER1_USERNAME',
+  user2: 'MEOW_USER2_USERNAME',
+};
+
 const USER_IDS = ['user1', 'user2'];
 
 const encoder = new TextEncoder();
@@ -37,6 +42,31 @@ export const USERS: PublicUser[] = USER_IDS.map((id) => ({
 
 export function findUserById(userId: string): PublicUser | null {
   return USERS.find((user) => user.id === userId) ?? null;
+}
+
+/**
+ * Usernames accepted for a user: the fixed id (`user1`/`user2`), the configured
+ * `MEOW_USERx_USERNAME`, or - when no username is configured - the display name.
+ */
+function loginNames(user: PublicUser): string[] {
+  const names = new Set<string>([user.id.toLowerCase()]);
+  const configured = process.env[USERNAME_ENV[user.id]]?.trim();
+
+  if (configured) {
+    names.add(configured.toLowerCase());
+  } else {
+    const displayName = user.name.trim().toLowerCase();
+    if (displayName) names.add(displayName);
+  }
+
+  return [...names];
+}
+
+/** Resolve a typed username case-insensitively. Never leaks which names exist. */
+export function findUserByUsername(username: string): PublicUser | null {
+  const needle = username.trim().toLowerCase();
+  if (!needle) return null;
+  return USERS.find((user) => loginNames(user).includes(needle)) ?? null;
 }
 
 function getPasscode(userId: string): string | null {
@@ -71,6 +101,11 @@ export function getAuthConfigError(): string | null {
     return 'SESSION_SECRET must be set to at least 32 characters.';
   }
   for (const userId of USER_IDS) {
+    const username = process.env[USERNAME_ENV[userId]]?.trim();
+    if (username && username.length < 3) {
+      return `${USERNAME_ENV[userId]} must be at least 3 characters.`;
+    }
+
     const passcode = getPasscode(userId);
     if (!passcode) {
       return `${PASSCODE_ENV[userId]} is not set.`;
@@ -79,5 +114,11 @@ export function getAuthConfigError(): string | null {
       return `${PASSCODE_ENV[userId]} must be at least 6 characters.`;
     }
   }
+
+  const allNames = USERS.flatMap(loginNames);
+  if (new Set(allNames).size !== allNames.length) {
+    return 'Login usernames must be unique across the two accounts.';
+  }
+
   return null;
 }

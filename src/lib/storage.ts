@@ -23,35 +23,86 @@ export async function ensureDataDir() {
 export async function getMoments(): Promise<Moment[]> {
   await ensureDataDir();
   const data = await fs.readFile(MOMENTS_FILE, 'utf-8');
-  return JSON.parse(data);
+  const parsed: unknown = JSON.parse(data);
+  return Array.isArray(parsed) ? (parsed as Moment[]) : [];
 }
 
-export async function addMoment(moment: Moment): Promise<void> {
-  const moments = await getMoments();
-  moments.unshift(moment);
-  await fs.writeFile(MOMENTS_FILE, JSON.stringify(moments, null, 2), 'utf-8');
+/** Atomic write so a concurrent GET never reads a half-written file. */
+async function writeMoments(moments: Moment[]): Promise<void> {
+  const tempFile = `${MOMENTS_FILE}.tmp`;
+  await fs.writeFile(tempFile, JSON.stringify(moments, null, 2), 'utf-8');
+  await fs.rename(tempFile, MOMENTS_FILE);
+}
+
+/**
+ * The two of us can add and consume moments at the same time. A simple
+ * in-process queue keeps read-modify-write cycles from resurrecting or losing
+ * entries (a single container runs one Node process).
+ */
+let writeQueue: Promise<unknown> = Promise.resolve();
+
+function serialize<T>(operation: () => Promise<T>): Promise<T> {
+  const result = writeQueue.then(operation, operation);
+  writeQueue = result.then(
+    () => undefined,
+    () => undefined
+  );
+  return result;
+}
+
+async function removeFile(fileName: string): Promise<void> {
+  try {
+    await fs.unlink(path.join(UPLOADS_DIR, fileName));
+  } catch {
+    // The file may already be gone.
+  }
+}
+
+export function addMoment(moment: Moment): Promise<void> {
+  return serialize(async () => {
+    const moments = await getMoments();
+    moments.unshift(moment);
+    await writeMoments(moments);
+  });
 }
 
 export type DeleteResult = 'deleted' | 'not_found' | 'forbidden';
 
-export async function deleteMoment(id: string, ownerId: string): Promise<DeleteResult> {
-  const moments = await getMoments();
-  const moment = moments.find((m) => m.id === id);
-  if (!moment) return 'not_found';
-  // Ownership is enforced here, in the storage layer, so no caller can skip it.
-  if (moment.from !== ownerId) return 'forbidden';
+export function deleteMoment(
+  id: string,
+  ownerId: string
+): Promise<DeleteResult> {
+  return serialize(async () => {
+    const moments = await getMoments();
+    const moment = moments.find((m) => m.id === id);
+    if (!moment) return 'not_found';
+    // Ownership is enforced here, in the storage layer, so no caller can skip it.
+    if (moment.from !== ownerId) return 'forbidden';
 
-  const filtered = moments.filter((m) => m.id !== id);
-  await fs.writeFile(MOMENTS_FILE, JSON.stringify(filtered, null, 2), 'utf-8');
+    await writeMoments(moments.filter((m) => m.id !== id));
+    await removeFile(moment.fileName);
+    return 'deleted';
+  });
+}
 
-  // Delete the file too
-  try {
-    const filePath = path.join(UPLOADS_DIR, moment.fileName);
-    await fs.unlink(filePath);
-  } catch {
-    // File may already be gone
-  }
-  return 'deleted';
+/**
+ * Mark moments as seen for both people. Seen moments are removed for good:
+ * the records disappear from the feed and their media files are deleted.
+ * Unknown ids are ignored, so clearing the same card twice is harmless.
+ */
+export function consumeMoments(ids: string[]): Promise<number> {
+  return serialize(async () => {
+    const wanted = new Set(ids);
+    if (wanted.size === 0) return 0;
+
+    const moments = await getMoments();
+    const consumed = moments.filter((moment) => wanted.has(moment.id));
+    if (consumed.length === 0) return 0;
+
+    await writeMoments(moments.filter((moment) => !wanted.has(moment.id)));
+    await Promise.all(consumed.map((moment) => removeFile(moment.fileName)));
+    return consumed.length;
+  });
 }
 
 export function getUploadsDir(): string {

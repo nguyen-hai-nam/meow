@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
@@ -16,15 +10,13 @@ import MomentCard from '@/components/MomentCard';
 import type { Moment } from '@/lib/types';
 import type { PublicUser } from '@/lib/users';
 
-const STORAGE_KEY = 'meow:cleared-moments';
-const MAX_CLEARED = 400;
 const SWIPE_MS = 280;
 
 interface MomentStackProps {
   moments: Moment[];
-  loaded: boolean;
   currentUser: string;
   users: PublicUser[];
+  onSeen: (id: string) => void;
   onDelete?: (id: string) => void;
 }
 
@@ -39,30 +31,21 @@ interface FlyingState {
   dir: 1 | -1;
 }
 
-function readCleared(): Set<string> {
+function tapFeedback() {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
-    if (Array.isArray(parsed)) {
-      return new Set(
-        parsed.filter((id): id is string => typeof id === 'string')
-      );
-    }
+    navigator.vibrate?.(8);
   } catch {
-    // Corrupt storage or blocked storage: start with an empty pile.
+    // Haptics are optional (and unavailable on iOS).
   }
-  return new Set();
 }
 
 export default function MomentStack({
   moments,
-  loaded,
   currentUser,
   users,
+  onSeen,
   onDelete,
 }: MomentStackProps) {
-  const [cleared, setCleared] = useState<Set<string>>(new Set());
-  const [clearedReady, setClearedReady] = useState(false);
   const [drag, setDrag] = useState<DragState>({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [flying, setFlying] = useState<FlyingState | null>(null);
@@ -77,34 +60,12 @@ export default function MomentStack({
   const timerRef = useRef<number | null>(null);
   const widthRef = useRef(320);
 
-  // Cleared cards are remembered per device so the pile doesn't reset on reload.
-  useEffect(() => {
-    setCleared(readCleared());
-    setClearedReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!clearedReady) return;
-    try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify([...cleared].slice(-MAX_CLEARED))
-      );
-    } catch {
-      // Storage can be unavailable (private mode); clearing still works in-session.
-    }
-  }, [cleared, clearedReady]);
-
   // Oldest moment first: whatever was shared first sits on top of the pile.
   const ordered = useMemo(
     () => [...moments].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     [moments]
   );
-  const visible = useMemo(
-    () => ordered.filter((moment) => !cleared.has(moment.id)),
-    [ordered, cleared]
-  );
-  const top = visible[0];
+  const top = ordered[0];
   const topId = top?.id;
 
   useEffect(() => {
@@ -121,19 +82,11 @@ export default function MomentStack({
     setFlying(null);
   }, [topId]);
 
-  const dismiss = useCallback((id: string) => {
-    setCleared((prev) => {
-      if (prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-  }, []);
-
   const flingOut = useCallback(
     (dir: 1 | -1, startY = 0) => {
       if (!top || flyingRef.current) return;
       flyingRef.current = true;
+      tapFeedback();
       setDragging(false);
       setFlying({ x: dir * (window.innerWidth + 200), y: startY, dir });
 
@@ -141,10 +94,10 @@ export default function MomentStack({
       timerRef.current = window.setTimeout(() => {
         setFlying(null);
         setDrag({ x: 0, y: 0 });
-        dismiss(top.id);
+        onSeen(top.id);
       }, SWIPE_MS);
     },
-    [top, dismiss]
+    [top, onSeen]
   );
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -157,8 +110,7 @@ export default function MomentStack({
       startX: event.clientX,
       startY: event.clientY,
     };
-    widthRef.current =
-      stackRef.current?.getBoundingClientRect().width || 320;
+    widthRef.current = stackRef.current?.getBoundingClientRect().width || 320;
     event.currentTarget.setPointerCapture(event.pointerId);
     setDragging(true);
   };
@@ -208,52 +160,16 @@ export default function MomentStack({
     }
   };
 
-  const resetCleared = () => setCleared(new Set());
-
-  if (!loaded || !clearedReady) {
+  if (ordered.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center pb-24">
-        <div className="aspect-[3/4] w-[min(78vw,40.5vh,360px)] animate-pulse
-          rounded-[28px] bg-white/70 shadow-xl" />
-      </div>
-    );
-  }
-
-  if (moments.length === 0) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center pb-24 text-center
-        animate-fade-in">
+      <div className="flex h-full flex-col items-center justify-center pb-24 text-center animate-fade-in">
         <span className="mb-4 block text-6xl">💌</span>
-        <h2 className="mb-2 text-xl font-semibold text-gray-600">
-          No moments yet
-        </h2>
-        <p className="max-w-xs text-gray-400">
-          Share your first photo or voice message!
-        </p>
-      </div>
-    );
-  }
-
-  if (visible.length === 0) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center pb-24 text-center
-        animate-fade-in">
-        <span className="mb-4 block text-6xl">✨</span>
         <h2 className="mb-2 text-xl font-semibold text-gray-600">
           All caught up
         </h2>
         <p className="max-w-xs text-gray-400">
-          You&apos;ve cleared every moment. New ones will land right here.
+          New moments will land right here.
         </p>
-        {cleared.size > 0 && (
-          <button
-            type="button"
-            onClick={resetCleared}
-            className="mt-5 text-xs text-warm-pink underline underline-offset-4"
-          >
-            Show cleared moments again
-          </button>
-        )}
       </div>
     );
   }
@@ -268,6 +184,7 @@ export default function MomentStack({
         }deg)`,
         opacity: 0.35,
         transition: `transform ${SWIPE_MS}ms cubic-bezier(0.3, 0, 0.3, 1), opacity ${SWIPE_MS}ms ease-out`,
+        willChange: 'transform, opacity',
         zIndex: 30,
       }
     : {
@@ -277,6 +194,7 @@ export default function MomentStack({
         transition: dragging
           ? 'none'
           : 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1)',
+        willChange: dragging ? 'transform' : undefined,
         zIndex: 30,
       };
 
@@ -291,13 +209,12 @@ export default function MomentStack({
 
   return (
     <div className="flex h-full w-full flex-col items-center justify-between">
-      <div className="relative flex min-h-0 w-full flex-1 items-center
-        justify-center pb-6">
+      <div className="relative flex min-h-0 w-full flex-1 items-center justify-center pb-6">
         <div
           ref={stackRef}
           className="relative aspect-[3/4] w-[min(78vw,40.5vh,360px)]"
         >
-          {visible.slice(0, 3).map((moment, index) => {
+          {ordered.slice(0, 3).map((moment, index) => {
             if (index === 0) {
               return (
                 <div
@@ -306,7 +223,7 @@ export default function MomentStack({
                   aria-label={`Moment from ${
                     users.find((user) => user.id === moment.from)?.name ??
                     moment.from
-                  }. Swipe left or right, or press an arrow key, to clear.`}
+                  }. Swipe left or right, or press an arrow key, to clear it for both of you.`}
                   tabIndex={0}
                   onPointerDown={onPointerDown}
                   onPointerMove={onPointerMove}
@@ -323,13 +240,13 @@ export default function MomentStack({
                     currentUser={currentUser}
                     users={users}
                     onDelete={onDelete}
+                    eager
                   />
 
                   {!flying && Math.abs(drag.x) > 10 && (
                     <div
                       aria-hidden="true"
-                      className="pointer-events-none absolute inset-x-0 top-5
-                        flex justify-center"
+                      className="pointer-events-none absolute inset-x-0 top-5 flex justify-center"
                     >
                       <span
                         className="rounded-full border border-white/70 bg-black/30
@@ -384,10 +301,10 @@ export default function MomentStack({
 
           <div className="min-w-[7.5rem] text-center">
             <p className="text-sm font-semibold text-gray-500">
-              {visible.length} {visible.length === 1 ? 'moment' : 'moments'}
+              {ordered.length} {ordered.length === 1 ? 'moment' : 'moments'}
             </p>
             <p className="text-[11px] text-gray-400">
-              Swipe left or right to clear
+              Swipe to clear for both of you
             </p>
           </div>
 
@@ -405,7 +322,7 @@ export default function MomentStack({
         </div>
 
         <p className="sr-only" aria-live="polite">
-          {visible.length} {visible.length === 1 ? 'moment' : 'moments'} left in
+          {ordered.length} {ordered.length === 1 ? 'moment' : 'moments'} left in
           the pile.
         </p>
       </div>

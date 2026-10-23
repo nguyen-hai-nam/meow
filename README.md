@@ -8,10 +8,10 @@ Built on Next.js 16 (App Router) and React 19.
 
 Moments arrive as a pile of cards in the centre of the screen. The oldest
 unseen moment sits on top; swipe it left or right (or use the arrow buttons /
-arrow keys) to clear it from the pile. Clearing is remembered per device in
-local storage, so it follows what that person has already looked at without
-removing the moment for the other person. A sender can still delete their own
-moment permanently with the trash button on the card.
+arrow keys) to clear it. Clearing is permanent and shared: the moment is
+deleted from the server and its media file is removed, so it will never appear
+again for either person. A sender can also delete their own moment with the
+trash button on the card.
 
 ## Requirements
 
@@ -22,7 +22,9 @@ moment permanently with the trash button on the card.
 ## Access model
 
 - Two fixed accounts: `user1` and `user2`.
-- Each has a passcode set through environment variables.
+- Sign in with a username and password. Usernames come from
+  `MEOW_USER1_USERNAME` / `MEOW_USER2_USERNAME` and fall back to the display
+  name when omitted; passwords come from the `MEOW_USERx_PASSCODE` variables.
 - Signing in sets a signed, `HttpOnly` session cookie (30 days).
 - Every API route and page checks the session on the server.
 - A moment can only be deleted by the account that created it. The sender id is
@@ -39,8 +41,9 @@ Edit `.env`:
 | Variable | Notes |
 | --- | --- |
 | `SESSION_SECRET` | At least 32 chars. Generate with `openssl rand -hex 32`. Changing it logs everyone out. |
-| `MEOW_USER1_NAME` / `MEOW_USER2_NAME` | Display names. |
-| `MEOW_USER1_PASSCODE` / `MEOW_USER2_PASSCODE` | Minimum 6 chars. |
+| `MEOW_USER1_NAME` / `MEOW_USER2_NAME` | Display names, shown in the app. |
+| `MEOW_USER1_USERNAME` / `MEOW_USER2_USERNAME` | Optional login usernames (min 3 chars, unique). Defaults to the display name. |
+| `MEOW_USER1_PASSCODE` / `MEOW_USER2_PASSCODE` | Login passwords. Minimum 6 chars. |
 | `MEOW_DATA_DIR` | Optional. Where media and `moments.json` are stored. Compose sets it to `/app/data`. |
 
 Then:

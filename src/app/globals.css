@@ -83,6 +83,8 @@
   body {
     background-color: #fff5f7;
     -webkit-tap-highlight-color: transparent;
+    /* Keep taps instant instead of waiting for a possible double-tap zoom. */
+    touch-action: manipulation;
   }
 }
 

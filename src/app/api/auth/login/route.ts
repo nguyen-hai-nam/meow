@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from '@/lib/session';
-import { findUserById, getAuthConfigError, verifyCredentials } from '@/lib/users';
+import { findUserByUsername, getAuthConfigError, verifyCredentials } from '@/lib/users';
 import { clientIp, rateLimit, resetRateLimit } from '@/lib/rate-limit';
 
 const MAX_ATTEMPTS = 5;
@@ -16,29 +16,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { userId?: unknown; passcode?: unknown };
+  let body: { username?: unknown; password?: unknown };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const userId = typeof body.userId === 'string' ? body.userId : '';
-  const passcode = typeof body.passcode === 'string' ? body.passcode : '';
+  const username = typeof body.username === 'string' ? body.username.trim() : '';
+  const password = typeof body.password === 'string' ? body.password : '';
 
-  if (!userId || !passcode) {
+  if (!username || !password) {
     return NextResponse.json({ error: 'Missing credentials' }, { status: 400 });
   }
 
-  if (!findUserById(userId)) {
-    return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-  }
-
-  const limit = rateLimit(
-    `login:${clientIp(request.headers)}:${userId}`,
-    MAX_ATTEMPTS,
-    WINDOW_MS
-  );
+  const limitKey = `login:${clientIp(request.headers)}:${username.toLowerCase()}`;
+  const limit = rateLimit(limitKey, MAX_ATTEMPTS, WINDOW_MS);
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Too many attempts. Please wait a few minutes and try again.' },
@@ -49,15 +42,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const user = verifyCredentials(userId, passcode);
+  const candidate = findUserByUsername(username);
+  // Use the same message for an unknown username and a wrong password.
+  const user = candidate ? verifyCredentials(candidate.id, password) : null;
   if (!user) {
     return NextResponse.json(
-      { error: 'Incorrect passcode' },
+      { error: 'Incorrect username or password' },
       { status: 401, headers: { 'Cache-Control': 'no-store' } }
     );
   }
 
-  resetRateLimit(`login:${clientIp(request.headers)}:${userId}`);
+  resetRateLimit(limitKey);
 
   const token = await createSessionToken(user.id);
   const response = NextResponse.json({ user }, { headers: { 'Cache-Control': 'no-store' } });
