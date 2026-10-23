@@ -226,7 +226,7 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
                 setShowCamera(true);
               }}
               aria-label="Take a photo"
-              className="w-14 h-14 rounded-full bg-gradient-to-r from-pink-400 to-rose-500
+              className="w-14 h-14 rounded-full bg-linear-to-r from-pink-400 to-rose-500
                 text-white shadow-lg flex items-center justify-center text-2xl
                 transform transition-all active:scale-90"
             >
@@ -238,7 +238,7 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
                 setShowVoice(true);
               }}
               aria-label="Record a voice message"
-              className="w-14 h-14 rounded-full bg-gradient-to-r from-purple-400 to-indigo-500
+              className="w-14 h-14 rounded-full bg-linear-to-r from-purple-400 to-indigo-500
                 text-white shadow-lg flex items-center justify-center text-2xl
                 transform transition-all active:scale-90"
             >

@@ -213,7 +213,7 @@ export default function VoiceRecorder({ onRecord, onClose }: VoiceRecorderProps)
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-b from-purple-900 to-indigo-950 flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-50 bg-linear-to-b from-purple-900 to-indigo-950 flex flex-col items-center justify-center">
       {/* Close button */}
       <button
         onClick={handleClose}
@@ -258,7 +258,7 @@ export default function VoiceRecorder({ onRecord, onClose }: VoiceRecorderProps)
               className="w-24 h-24 rounded-full bg-red-500 flex items-center justify-center
                 recording-pulse transform transition-all active:scale-95"
             >
-              <div className="w-8 h-8 rounded-sm bg-white" />
+              <div className="w-8 h-8 rounded-xs bg-white" />
             </button>
           )}
         </div>

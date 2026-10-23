@@ -53,8 +53,8 @@ export default function MomentCard({
       <div
         className={`rounded-2xl overflow-hidden shadow-md ${
           isOwn
-            ? 'bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-100'
-            : 'bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100'
+            ? 'bg-linear-to-br from-pink-50 to-rose-50 border border-pink-100'
+            : 'bg-linear-to-br from-purple-50 to-indigo-50 border border-purple-100'
         }`}
       >
         {/* Header */}

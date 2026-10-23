@@ -6,9 +6,9 @@ Built on Next.js 16 (App Router) and React 19.
 
 ## Requirements
 
-- Node.js 20.9+ for local development (the Docker image ships Node 24).
-- A browser that supports the Next.js 16 baseline: Chrome/Edge 111+,
-  Firefox 111+, Safari 16.4+.
+- Node.js 24 (see `.nvmrc`; the Docker image ships `node:24-alpine`).
+- A browser that supports the Next.js 16 + Tailwind CSS 4 baseline:
+  Chrome/Edge 111+, Firefox 128+, Safari 16.4+.
 
 ## Access model
 

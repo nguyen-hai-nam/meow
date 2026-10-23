@@ -78,7 +78,7 @@ export default function LoginScreen({ users }: LoginScreenProps) {
               <button
                 key={user.id}
                 onClick={() => chooseUser(user)}
-                className={`w-full p-6 rounded-2xl bg-gradient-to-r ${
+                className={`w-full p-6 rounded-2xl bg-linear-to-r ${
                   GRADIENTS[index % GRADIENTS.length]
                 } text-white
                   transform transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]
@@ -118,7 +118,7 @@ export default function LoginScreen({ users }: LoginScreenProps) {
                 spellCheck={false}
                 disabled={submitting}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-center text-lg
-                  tracking-widest focus:outline-none focus:ring-2 focus:ring-warm-pink/50
+                  tracking-widest focus:outline-hidden focus:ring-2 focus:ring-warm-pink/50
                   disabled:opacity-60"
                 placeholder="••••••"
               />
