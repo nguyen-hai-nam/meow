@@ -11,6 +11,32 @@
   --animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
   --animate-slide-up: slide-up 0.3s ease-out;
   --animate-fade-in: fade-in 0.5s ease-out;
+  --animate-capture-shrink: capture-shrink 520ms cubic-bezier(0.4, 0, 0.2, 1)
+    forwards;
+  --animate-capture-flash: capture-flash 200ms ease-out forwards;
+
+  @keyframes capture-shrink {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(0.06);
+      opacity: 0;
+    }
+  }
+
+  @keyframes capture-flash {
+    0% {
+      opacity: 0;
+    }
+    18% {
+      opacity: 0.85;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
 
   @keyframes pulse-soft {
     0%,
