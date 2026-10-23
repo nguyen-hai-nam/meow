@@ -1,15 +1,8 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import type { Moment } from '@/lib/types';
 
-export interface Moment {
-  id: string;
-  type: 'photo' | 'voice';
-  from: string;
-  caption?: string;
-  fileName: string;
-  mimeType?: string;
-  createdAt: string;
-}
+export type { Moment } from '@/lib/types';
 
 const DATA_DIR = process.env.MEOW_DATA_DIR
   ? path.resolve(process.env.MEOW_DATA_DIR)

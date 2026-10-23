@@ -4,6 +4,15 @@ A tiny private space for two people to share photos and voice notes.
 
 Built on Next.js 16 (App Router) and React 19.
 
+## Feed
+
+Moments arrive as a pile of cards in the centre of the screen. The oldest
+unseen moment sits on top; swipe it left or right (or use the arrow buttons /
+arrow keys) to clear it from the pile. Clearing is remembered per device in
+local storage, so it follows what that person has already looked at without
+removing the moment for the other person. A sender can still delete their own
+moment permanently with the trash button on the card.
+
 ## Requirements
 
 - Node.js 24 (see `.nvmrc`; the Docker image ships `node:24-alpine`).

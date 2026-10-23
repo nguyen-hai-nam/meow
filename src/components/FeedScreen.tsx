@@ -4,19 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import CameraCapture from '@/components/CameraCapture';
 import VoiceRecorder from '@/components/VoiceRecorder';
-import MomentCard from '@/components/MomentCard';
+import MomentStack from '@/components/MomentStack';
 import InstallPrompt from '@/components/InstallPrompt';
 import InstallButton from '@/components/InstallButton';
 import type { PublicUser } from '@/lib/users';
-
-interface Moment {
-  id: string;
-  type: 'photo' | 'voice';
-  from: string;
-  caption?: string;
-  fileName: string;
-  createdAt: string;
-}
+import type { Moment } from '@/lib/types';
 
 interface FeedScreenProps {
   user: PublicUser;
@@ -39,6 +31,7 @@ function audioExtension(mimeType: string): string {
 export default function FeedScreen({ user, users }: FeedScreenProps) {
   const router = useRouter();
   const [moments, setMoments] = useState<Moment[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [showVoice, setShowVoice] = useState(false);
   const [sending, setSending] = useState(false);
@@ -66,6 +59,8 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
       }
     } catch (err) {
       console.error('Failed to fetch moments:', err);
+    } finally {
+      setLoaded(true);
     }
   }, [sessionExpired]);
 
@@ -151,9 +146,9 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
   };
 
   return (
-    <div className="min-h-screen bg-soft-bg pb-32">
+    <div className="flex h-dvh flex-col overflow-hidden bg-soft-bg">
       {/* Header */}
-      <header className="sticky top-0 z-30 glass border-b border-pink-100 safe-top">
+      <header className="glass shrink-0 border-b border-pink-100 safe-top">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">{user.emoji}</span>
@@ -178,37 +173,25 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
       </header>
 
       {/* Feed */}
-      <main className="max-w-lg mx-auto px-4 pt-4">
+      <main className="mx-auto flex w-full max-w-lg min-h-0 flex-1 flex-col px-4 pt-3">
         {error && (
           <div
             role="alert"
-            className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-500"
+            className="mb-3 shrink-0 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-500"
           >
             {error}
           </div>
         )}
 
-        {moments.length === 0 ? (
-          <div className="text-center py-20 animate-fade-in">
-            <span className="text-6xl block mb-4">💌</span>
-            <h2 className="text-xl font-semibold text-gray-600 mb-2">
-              No moments yet
-            </h2>
-            <p className="text-gray-400">
-              Share your first photo or voice message!
-            </p>
-          </div>
-        ) : (
-          moments.map((moment) => (
-            <MomentCard
-              key={moment.id}
-              moment={moment}
-              currentUser={currentUser}
-              users={users}
-              onDelete={handleDelete}
-            />
-          ))
-        )}
+        <div className="min-h-0 flex-1">
+          <MomentStack
+            moments={moments}
+            loaded={loaded}
+            currentUser={currentUser}
+            users={users}
+            onDelete={handleDelete}
+          />
+        </div>
       </main>
 
       {/* Sending overlay */}
