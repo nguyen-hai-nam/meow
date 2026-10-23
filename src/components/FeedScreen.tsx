@@ -6,6 +6,7 @@ import CameraCapture from '@/components/CameraCapture';
 import VoiceRecorder from '@/components/VoiceRecorder';
 import MomentCard from '@/components/MomentCard';
 import InstallPrompt from '@/components/InstallPrompt';
+import InstallButton from '@/components/InstallButton';
 import type { PublicUser } from '@/lib/users';
 
 interface Moment {
@@ -163,13 +164,16 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
               </p>
             </div>
           </div>
-          <button
-            onClick={signOut}
-            className="text-xs text-gray-400 hover:text-gray-600 px-3 py-1.5
-              rounded-full border border-gray-200 transition-colors"
-          >
-            Sign out
-          </button>
+          <div className="flex items-center gap-2">
+            <InstallButton />
+            <button
+              onClick={signOut}
+              className="text-xs text-gray-400 hover:text-gray-600 px-3 py-1.5
+                rounded-full border border-gray-200 transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 

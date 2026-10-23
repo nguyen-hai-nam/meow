@@ -6,7 +6,6 @@ export const metadata: Metadata = {
   title: 'Meow Moments',
   description: 'Share moments with your special someone',
   applicationName: 'Meow Moments',
-  manifest: '/manifest.json',
   formatDetection: { telephone: false },
   other: {
     'apple-mobile-web-app-capable': 'yes',
@@ -23,6 +22,16 @@ export const metadata: Metadata = {
       { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
+      {
+        url: '/icons/apple-touch-icon-152.png',
+        sizes: '152x152',
+        type: 'image/png',
+      },
+      {
+        url: '/icons/apple-touch-icon-167.png',
+        sizes: '167x167',
+        type: 'image/png',
+      },
       {
         url: '/icons/apple-touch-icon.png',
         sizes: '180x180',

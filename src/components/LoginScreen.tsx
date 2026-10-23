@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import InstallButton from '@/components/InstallButton';
 import type { PublicUser } from '@/lib/users';
 
 const GRADIENTS = [
@@ -156,6 +157,10 @@ export default function LoginScreen({ users }: LoginScreenProps) {
       <p className="mt-12 text-xs text-gray-300">
         {selected ? 'Only the two of you can get in' : 'Tap to enter your space'}
       </p>
+
+      <div className="mt-4">
+        <InstallButton variant="text" />
+      </div>
     </main>
   );
 }

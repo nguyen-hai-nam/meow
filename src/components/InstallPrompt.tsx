@@ -1,44 +1,46 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
-}
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import InstallHelpDialog from '@/components/InstallHelpDialog';
+import {
+  EMPTY_PLATFORM,
+  detectPlatform,
+  getDeferredPrompt,
+  subscribeToDeferredPrompt,
+  type PlatformInfo,
+} from '@/lib/install';
 
 const DISMISS_KEY = 'meow-install-prompt-dismissed';
 
-function isStandalone() {
-  if (typeof window === 'undefined') return false;
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  );
-}
-
-function isIosDevice() {
-  if (typeof navigator === 'undefined') return false;
-  const ua = navigator.userAgent;
-  const iPadOs = /Macintosh/i.test(ua) && navigator.maxTouchPoints > 1;
-  return /iphone|ipad|ipod/i.test(ua) || iPadOs;
-}
-
 /**
- * Small "add to home screen" prompt.
- *
- * Android/Chrome fire `beforeinstallprompt`, so we can trigger the native
- * install sheet. iOS Safari has no such API, so there we show the manual
- * Share -> Add to Home Screen hint instead.
+ * One-time nudge shown above the composer. Dismissing it only hides this
+ * banner; the permanent "Install" button in the header stays available.
  */
 export default function InstallPrompt() {
+  const [platform, setPlatform] = useState<PlatformInfo>(EMPTY_PLATFORM);
   const [visible, setVisible] = useState(false);
-  const [ios, setIos] = useState(false);
-  const [promptEvent, setPromptEvent] =
-    useState<BeforeInstallPromptEvent | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const promptEvent = useSyncExternalStore(
+    subscribeToDeferredPrompt,
+    getDeferredPrompt,
+    () => null
+  );
 
   useEffect(() => {
-    if (isStandalone()) return;
+    setPlatform(detectPlatform());
+  }, []);
+
+  useEffect(() => {
+    if (platform.isStandalone) {
+      setVisible(false);
+      return;
+    }
 
     try {
       if (window.localStorage.getItem(DISMISS_KEY) === '1') return;
@@ -46,31 +48,8 @@ export default function InstallPrompt() {
       // Storage can be unavailable (private mode); show the prompt anyway.
     }
 
-    const iosDevice = isIosDevice();
-    setIos(iosDevice);
-
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setPromptEvent(event as BeforeInstallPromptEvent);
-      setVisible(true);
-    };
-
-    const onAppInstalled = () => {
-      setVisible(false);
-      setPromptEvent(null);
-    };
-
-    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
-    window.addEventListener('appinstalled', onAppInstalled);
-
-    // iOS never fires `beforeinstallprompt`; show the manual hint instead.
-    if (iosDevice) setVisible(true);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', onAppInstalled);
-    };
-  }, []);
+    if (platform.isIOS || promptEvent) setVisible(true);
+  }, [platform, promptEvent]);
 
   const dismiss = useCallback(() => {
     try {
@@ -82,53 +61,61 @@ export default function InstallPrompt() {
   }, []);
 
   const install = useCallback(async () => {
-    if (!promptEvent) return;
+    if (!promptEvent) {
+      setHelpOpen(true);
+      return;
+    }
 
     try {
       await promptEvent.prompt();
       await promptEvent.userChoice;
+    } catch {
+      setHelpOpen(true);
     } finally {
       setVisible(false);
-      setPromptEvent(null);
     }
   }, [promptEvent]);
 
   if (!visible) return null;
 
-  return (
-    <div className="fixed inset-x-4 bottom-24 z-30 animate-slide-up">
-      <div className="glass rounded-2xl border border-pink-100 p-4 shadow-lg">
-        <div className="flex items-start gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/icons/icon-192.png"
-            alt=""
-            width={40}
-            height={40}
-            className="h-10 w-10 shrink-0 rounded-xl shadow-sm"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-gray-800">
-              Add Meow to your home screen
-            </p>
-            <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
-              {ios
-                ? 'Tap Share, then “Add to Home Screen”.'
-                : 'Full screen, one tap away — and it opens faster.'}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={dismiss}
-            aria-label="Dismiss install prompt"
-            className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-gray-400
-              transition-colors hover:text-gray-600"
-          >
-            ✕
-          </button>
-        </div>
+  const iosSafari = platform.isIOS && platform.iosBrowser === 'safari';
 
-        {!ios && promptEvent && (
+  return (
+    <>
+      <div className="fixed inset-x-4 bottom-24 z-30 animate-slide-up">
+        <div className="glass rounded-2xl border border-pink-100 p-4 shadow-lg">
+          <div className="flex items-start gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icons/icon-192.png"
+              alt=""
+              width={40}
+              height={40}
+              className="h-10 w-10 shrink-0 rounded-xl shadow-sm"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-gray-800">
+                Add Meow to your home screen
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
+                {iosSafari
+                  ? 'Tap Share, then “Add to Home Screen”.'
+                  : platform.isIOS
+                    ? 'Open this page in Safari to install it.'
+                    : 'Full screen, one tap away — and it opens faster.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={dismiss}
+              aria-label="Dismiss install prompt"
+              className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-gray-400
+                transition-colors hover:text-gray-600"
+            >
+              ✕
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={install}
@@ -136,10 +123,17 @@ export default function InstallPrompt() {
               font-semibold text-white shadow-md transition-transform
               active:scale-[0.98]"
           >
-            Install
+            {promptEvent ? 'Install' : 'How to install'}
           </button>
-        )}
+        </div>
       </div>
-    </div>
+
+      {helpOpen && (
+        <InstallHelpDialog
+          platform={platform}
+          onClose={() => setHelpOpen(false)}
+        />
+      )}
+    </>
   );
 }

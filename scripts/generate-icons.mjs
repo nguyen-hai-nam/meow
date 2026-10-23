@@ -12,6 +12,8 @@
  *   icon-512.png             512x512, rounded corners
  *   icon-maskable-512.png    512x512, full bleed, artwork inside the 80% safe zone
  *   apple-touch-icon.png     180x180, full bleed (iOS applies its own mask)
+ *   apple-touch-icon-152.png 152x152 iPad
+ *   apple-touch-icon-167.png 167x167 iPad Pro
  */
 
 import { deflateSync } from 'node:zlib';
@@ -255,6 +257,8 @@ const targets = [
   ['icon-192.png', 192, { rounded: true, catScale: 1 }],
   ['icon-512.png', 512, { rounded: true, catScale: 1 }],
   ['icon-maskable-512.png', 512, { rounded: false, catScale: 0.86 }],
+  ['apple-touch-icon-152.png', 152, { rounded: false, catScale: 1 }],
+  ['apple-touch-icon-167.png', 167, { rounded: false, catScale: 1 }],
   ['apple-touch-icon.png', 180, { rounded: false, catScale: 1 }],
 ];
 

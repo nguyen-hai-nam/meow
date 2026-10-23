@@ -6,16 +6,18 @@
  * so navigations are network-first and fall back to /offline.html.
  */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `meow-moments-${CACHE_VERSION}`;
 
 const PRECACHE = [
   '/offline.html',
-  '/manifest.json',
+  '/manifest.webmanifest',
   '/icons/icon.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-maskable-512.png',
+  '/icons/apple-touch-icon-152.png',
+  '/icons/apple-touch-icon-167.png',
   '/icons/apple-touch-icon.png',
 ];
 

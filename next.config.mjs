@@ -22,7 +22,7 @@ const nextConfig = {
       ],
     },
     {
-      source: '/manifest.json',
+      source: '/manifest.webmanifest',
       headers: [
         {
           key: 'Cache-Control',
@@ -31,6 +31,12 @@ const nextConfig = {
       ],
     },
   ],
+  async rewrites() {
+    return [
+      // Keep old manifest URLs (and already-installed clients) working.
+      { source: '/manifest.json', destination: '/manifest.webmanifest' },
+    ];
+  },
 };
 
 export default nextConfig;
