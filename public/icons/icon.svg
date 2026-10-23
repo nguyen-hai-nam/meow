@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Meow Moments">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF6B9D"/>
+      <stop offset=".5" stop-color="#C44DFF"/>
+      <stop offset="1" stop-color="#FF8C42"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="107.52" fill="url(#g)"/>
+  <polygon points="130.56,243.2 156.16,104.96 240.64,179.2" fill="#fff"/>
+  <polygon points="381.44,243.2 355.84,104.96 271.36,179.2" fill="#fff"/>
+  <polygon points="158.72,212.48 173.056,138.24 221.184,179.2" fill="#FFC2D6"/>
+  <polygon points="353.28,212.48 338.944,138.24 290.816,179.2" fill="#FFC2D6"/>
+  <circle cx="256" cy="294.4" r="129.024" fill="#fff"/>
+  <circle cx="209.92" cy="282.624" r="15.872" fill="#3B2A46"/>
+  <circle cx="302.08" cy="282.624" r="15.872" fill="#3B2A46"/>
+  <polygon points="241.664,324.096 270.336,324.096 256,342.016" fill="#FF6B9D"/>
+</svg>

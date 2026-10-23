@@ -65,6 +65,58 @@ docker run --rm -v meow-data:/data -v "$PWD":/backup alpine \
 `GET /api/health` returns `{"status":"ok"}` (no auth). Compose uses it for the
 container healthcheck.
 
+## Install as an app (PWA)
+
+The app is installable from Chrome/Edge (desktop and Android) and can be added
+to the Home Screen from Safari on iOS/iPadOS. Installation requires HTTPS (or
+`localhost`), because service workers and camera/microphone access are only
+available in secure contexts.
+
+- **Chrome/Edge/Android** — use the install button in the address bar, the
+  `Install` button in the in-app prompt, or the browser menu.
+- **iOS/iPadOS Safari** — tap **Share**, then **Add to Home Screen**. Safari has
+  no install API, so the app shows these instructions instead of an install
+  button.
+
+Once installed it launches in standalone mode (no browser chrome) and the feed
+header/FAB respect the device safe areas.
+
+### What works offline
+
+The service worker (`public/sw.js`) keeps the app shell and icons available, but
+**not** your moments: those come from the server and are private.
+
+| Request | Strategy |
+| --- | --- |
+| `GET /api/*` | network only — never cached |
+| App Router RSC payloads (`RSC: 1` / `?_rsc=`) | network only |
+| Page navigations | network first, falls back to `/offline.html` |
+| `/_next/static/*` (hashed assets) | cache first |
+| Icons, manifest, other same-origin GETs | stale-while-revalidate |
+| `POST`/`DELETE` etc. | not intercepted |
+
+When the server is unreachable, navigation shows the branded offline page with a
+retry button. Uploads and deletions require a connection.
+
+The worker is registered only in production builds so it cannot interfere with
+`next dev` hot reloading.
+
+### Regenerating icons
+
+Icons are drawn in code so the repo needs no rasteriser or emoji font:
+
+```bash
+npm run icons
+```
+
+This writes `public/icons/icon.svg`, `icon-192.png`, `icon-512.png`,
+`icon-maskable-512.png` and `apple-touch-icon.png`. Edit
+`scripts/generate-icons.mjs` to change the artwork, then commit the regenerated
+files (the Docker image serves them from `public/`).
+
+When changing the precache list or caching rules, bump `CACHE_VERSION` in
+`public/sw.js` so existing installs drop their old cache on activation.
+
 ## Local development
 
 ```bash

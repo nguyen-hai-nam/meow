@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import CameraCapture from '@/components/CameraCapture';
 import VoiceRecorder from '@/components/VoiceRecorder';
 import MomentCard from '@/components/MomentCard';
+import InstallPrompt from '@/components/InstallPrompt';
 import type { PublicUser } from '@/lib/users';
 
 interface Moment {
@@ -151,7 +152,7 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
   return (
     <div className="min-h-screen bg-soft-bg pb-32">
       {/* Header */}
-      <header className="sticky top-0 z-30 glass border-b border-pink-100">
+      <header className="sticky top-0 z-30 glass border-b border-pink-100 safe-top">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">{user.emoji}</span>
@@ -258,6 +259,8 @@ export default function FeedScreen({ user, users }: FeedScreenProps) {
           +
         </button>
       </div>
+
+      <InstallPrompt />
 
       {/* Click-away for menu */}
       {showMenu && (
