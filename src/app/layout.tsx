@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from 'next';
+import { TooltipProvider } from "@/components/ui/tooltip"
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import ServerConnectionStatus from '@/components/ServerConnectionStatus';
 import './globals.css';
+import { Inter } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: 'Meow Moments',
@@ -55,11 +60,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={cn("font-sans", inter.variable)}>
       <body className="min-h-screen bg-soft-bg antialiased">
-        <ServerConnectionStatus />
-        {children}
-        <ServiceWorkerRegistrar />
+        <TooltipProvider>
+          <ServerConnectionStatus />
+          {children}
+          <ServiceWorkerRegistrar />
+        </TooltipProvider>
       </body>
     </html>
   );
