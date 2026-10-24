@@ -80,6 +80,18 @@
     overscroll-behavior: none;
   }
 
+  * {
+    scrollbar-width: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
   body {
     background-color: #fff5f7;
     -webkit-tap-highlight-color: transparent;
@@ -118,18 +130,35 @@ audio::-webkit-media-controls-panel {
   background-color: #fff5f7;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 4px;
+.server-status-banner {
+  position: fixed;
+  z-index: 100;
+  top: max(0.75rem, env(safe-area-inset-top));
+  left: 50%;
+  display: flex;
+  width: min(calc(100% - 2rem), 28rem);
+  align-items: center;
+  gap: 0.65rem;
+  transform: translateX(-50%);
+  border: 1px solid #fecdd3;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 0.7rem 1rem;
+  color: #9f1239;
+  box-shadow: 0 8px 24px rgba(159, 18, 57, 0.12);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
-::-webkit-scrollbar-thumb {
-  background: #ff6b9d;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
+.server-status-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  background: #e11d48;
+  box-shadow: 0 0 0 3px #ffe4e6;
 }
 
 /* Recording animation */

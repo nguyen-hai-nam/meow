@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import InstallButton from '@/components/InstallButton';
 
 const LAST_USERNAME_KEY = 'meow:last-username';
 
 export default function LoginScreen() {
-  const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -46,9 +44,10 @@ export default function LoginScreen() {
         } catch {
           // Not important.
         }
-        router.prefetch('/feed');
-        router.replace('/feed');
-        router.refresh();
+        // Start a fresh request after the login response has stored the
+        // HttpOnly session cookie. This avoids rendering /feed from a stale
+        // client-side route cache.
+        window.location.assign('/feed');
         return;
       }
 
