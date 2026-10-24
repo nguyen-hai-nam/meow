@@ -19,6 +19,13 @@ const PREFERRED_MIME_TYPES = [
   'audio/ogg;codecs=opus',
   'audio/ogg',
 ];
+const DURATION_UPDATE_INTERVAL_MS = 1000;
+
+function formatDuration(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${(seconds % 60)
+    .toString()
+    .padStart(2, '0')}`;
+}
 
 function pickMimeType(): string | null {
   if (
@@ -169,7 +176,7 @@ export default function VoiceRecorder({ onRecord, onClose }: VoiceRecorderProps)
     setDuration(0);
     timerRef.current = setInterval(() => {
       setDuration((d) => d + 1);
-    }, 1000);
+    }, DURATION_UPDATE_INTERVAL_MS);
   };
 
   const stopRecording = () => {
@@ -209,9 +216,6 @@ export default function VoiceRecorder({ onRecord, onClose }: VoiceRecorderProps)
     onClose();
   };
 
-  const formatTime = (s: number) =>
-    `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
-
   return (
     <div className="fixed inset-0 z-50 bg-linear-to-b from-purple-900 to-indigo-950 flex flex-col items-center justify-center">
       {/* Close button */}
@@ -239,7 +243,7 @@ export default function VoiceRecorder({ onRecord, onClose }: VoiceRecorderProps)
             {isRecording ? 'Recording...' : 'Tap to start recording'}
           </p>
           <p className="text-white text-4xl font-mono mb-12">
-            {formatTime(duration)}
+            {formatDuration(duration)}
           </p>
 
           {!isRecording ? (
@@ -268,7 +272,7 @@ export default function VoiceRecorder({ onRecord, onClose }: VoiceRecorderProps)
           <div className="text-6xl mb-6">🎧</div>
           <p className="text-white/70 text-sm mb-4">Preview your message</p>
           <p className="text-white text-2xl font-mono mb-6">
-            {formatTime(duration)}
+            {formatDuration(duration)}
           </p>
 
           {audioUrl && (

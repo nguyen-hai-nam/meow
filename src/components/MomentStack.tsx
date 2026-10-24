@@ -11,6 +11,10 @@ import type { Moment } from '@/lib/types';
 import type { PublicUser } from '@/lib/users';
 
 const SWIPE_MS = 280;
+const MIN_SWIPE_DISTANCE_PX = 72;
+const SWIPE_WIDTH_RATIO = 0.28;
+const MAX_FLING_VERTICAL_OFFSET_PX = 80;
+const FLING_VERTICAL_OFFSET_RATIO = 0.3;
 
 interface MomentStackProps {
   moments: Moment[];
@@ -29,6 +33,17 @@ interface FlyingState {
   x: number;
   y: number;
   dir: 1 | -1;
+}
+
+function swipeThreshold(width: number): number {
+  return Math.max(MIN_SWIPE_DISTANCE_PX, width * SWIPE_WIDTH_RATIO);
+}
+
+function flingVerticalOffset(pointerOffset: number): number {
+  return Math.max(
+    -MAX_FLING_VERTICAL_OFFSET_PX,
+    Math.min(MAX_FLING_VERTICAL_OFFSET_PX, pointerOffset * FLING_VERTICAL_OFFSET_RATIO)
+  );
 }
 
 function tapFeedback() {
@@ -131,10 +146,10 @@ export default function MomentStack({
 
     const dx = event.clientX - pointer.startX;
     const dy = event.clientY - pointer.startY;
-    const threshold = Math.max(72, widthRef.current * 0.28);
+    const threshold = swipeThreshold(widthRef.current);
 
     if (Math.abs(dx) >= threshold) {
-      flingOut(dx > 0 ? 1 : -1, Math.max(-80, Math.min(80, dy * 0.3)));
+      flingOut(dx > 0 ? 1 : -1, flingVerticalOffset(dy));
       return;
     }
 
@@ -174,7 +189,7 @@ export default function MomentStack({
     );
   }
 
-  const threshold = Math.max(72, widthRef.current * 0.28);
+  const threshold = swipeThreshold(widthRef.current);
   const badgeProgress = Math.min(Math.abs(drag.x) / threshold, 1);
 
   const topStyle: CSSProperties = flying

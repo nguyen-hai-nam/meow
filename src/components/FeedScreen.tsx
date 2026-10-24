@@ -17,6 +17,8 @@ interface FeedScreenProps {
 }
 
 const LEGACY_CLEARED_KEY = 'meow:cleared-moments';
+const MAX_LEGACY_CLEARED_MOMENTS = 50;
+const MOMENT_POLL_INTERVAL_MS = 5000;
 
 const AUDIO_EXTENSIONS: Record<string, string> = {
   'audio/webm': 'webm',
@@ -94,7 +96,7 @@ export default function FeedScreen({
       if (Array.isArray(parsed)) {
         ids = parsed
           .filter((id): id is string => typeof id === 'string')
-          .slice(-50);
+          .slice(-MAX_LEGACY_CLEARED_MOMENTS);
       }
     } catch {
       // Ignore unreadable legacy storage.
@@ -123,7 +125,7 @@ export default function FeedScreen({
 
     const startPolling = () => {
       if (interval !== undefined) window.clearInterval(interval);
-      interval = window.setInterval(tick, 5000);
+      interval = window.setInterval(tick, MOMENT_POLL_INTERVAL_MS);
     };
 
     const onVisibilityChange = () => {

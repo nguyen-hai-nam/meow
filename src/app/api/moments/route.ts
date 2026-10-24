@@ -39,7 +39,7 @@ function resolveAudioFormat(
 }
 
 function isMomentType(value: unknown): value is MomentType {
-  return value === 'photo' || value === 'voice';
+  return VALID_TYPES.some((type) => type === value);
 }
 
 export async function GET(request: NextRequest) {

@@ -2,21 +2,28 @@
 
 import { useEffect, useState } from 'react';
 
+const HEALTH_ENDPOINT = '/api/health';
+const HEALTH_CHECK_TIMEOUT_MS = 5000;
+const HEALTH_CHECK_INTERVAL_MS = 15000;
+
 export default function ServerConnectionStatus() {
   const [connected, setConnected] = useState<boolean | null>(null);
 
   useEffect(() => {
     let active = true;
-    let checking = false;
+    let isChecking = false;
 
     const checkServer = async () => {
-      if (checking) return;
-      checking = true;
+      if (isChecking) return;
+      isChecking = true;
       const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 5000);
+      const timeout = window.setTimeout(
+        () => controller.abort(),
+        HEALTH_CHECK_TIMEOUT_MS
+      );
 
       try {
-        const response = await fetch('/api/health', {
+        const response = await fetch(HEALTH_ENDPOINT, {
           cache: 'no-store',
           signal: controller.signal,
         });
@@ -25,12 +32,12 @@ export default function ServerConnectionStatus() {
         if (active) setConnected(false);
       } finally {
         window.clearTimeout(timeout);
-        checking = false;
+        isChecking = false;
       }
     };
 
     void checkServer();
-    const interval = window.setInterval(checkServer, 15000);
+    const interval = window.setInterval(checkServer, HEALTH_CHECK_INTERVAL_MS);
     const retryWhenOnline = () => void checkServer();
     const markOffline = () => setConnected(false);
     window.addEventListener('online', retryWhenOnline);

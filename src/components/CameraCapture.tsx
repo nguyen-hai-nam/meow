@@ -7,6 +7,10 @@ interface CameraCaptureProps {
   onClose: () => void;
 }
 
+function stopMediaStream(stream: MediaStream | null): void {
+  stream?.getTracks().forEach((track) => track.stop());
+}
+
 export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -36,13 +40,13 @@ export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps
   // Stop the tracks if the component is unmounted for any reason.
   useEffect(() => {
     return () => {
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      stopMediaStream(streamRef.current);
     };
   }, []);
 
   const startCamera = useCallback(async (facing: 'user' | 'environment') => {
     try {
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      stopMediaStream(streamRef.current);
 
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -126,7 +130,7 @@ export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps
     setCapturing(canvas.toDataURL('image/jpeg', 0.9));
 
     // Freeze the preview behind the shrinking snapshot.
-    streamRef.current?.getTracks().forEach((track) => track.stop());
+    stopMediaStream(streamRef.current);
   }, [capturing]);
 
   // Fallback in case `animationend` never fires (e.g. reduced motion).
@@ -137,7 +141,7 @@ export default function CameraCapture({ onCapture, onClose }: CameraCaptureProps
   }, [capturing, finishCapture]);
 
   const handleClose = () => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
+    stopMediaStream(streamRef.current);
     onClose();
   };
 
